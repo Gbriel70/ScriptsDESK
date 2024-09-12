@@ -1,7 +1,3 @@
-# Criação de arquivo README.md com o conteúdo traduzido para inglês
-
-# Conteúdo do README
-readme_content = """
 # My Desktop Scripts
 
 This repository contains my current scripts that I find essential for my desktop setup with dwmblocks.
