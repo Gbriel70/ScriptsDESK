@@ -1,0 +1,65 @@
+#!/bin/bash
+# wallpaper — define um fundo de tela e gera paleta de cores via pywal.
+#
+# Uso:
+#   wallpaper                  # sorteia uma imagem da pasta padrão
+#   wallpaper /caminho/img.jpg # usa imagem específica
+#   wallpaper --list           # lista imagens da pasta
+#   wallpaper --no-color       # só muda fundo, não regera cores
+#
+# Pasta padrão: ~/.local/share/wallpapers/
+# Pode ser sobrescrita com a variável WALLPAPER_DIR.
+
+set -e
+
+WALLPAPER_DIR="${WALLPAPER_DIR:-$HOME/.local/share/wallpapers}"
+SKIP_COLOR=0
+
+# Parse de flags
+case "$1" in
+    --list)
+        find "$WALLPAPER_DIR" -maxdepth 1 -type f \
+            \( -iname '*.jpg' -o -iname '*.jpeg' -o -iname '*.png' -o -iname '*.webp' \) \
+            -printf '%f\n' | sort
+        exit 0
+        ;;
+    --no-color)
+        SKIP_COLOR=1
+        shift
+        ;;
+    -h|--help)
+        sed -n '2,11p' "$0" | sed 's/^# \{0,1\}//'
+        exit 0
+        ;;
+esac
+
+# Resolve a imagem (argumento explícito ou sorteio)
+if [ -n "$1" ] && [ -f "$1" ]; then
+    img="$1"
+else
+    img=$(find "$WALLPAPER_DIR" -maxdepth 1 -type f \
+        \( -iname '*.jpg' -o -iname '*.jpeg' -o -iname '*.png' -o -iname '*.webp' \) \
+        | shuf -n 1)
+fi
+
+if [ -z "$img" ] || [ ! -f "$img" ]; then
+    echo "Nenhuma imagem encontrada em $WALLPAPER_DIR" >&2
+    exit 1
+fi
+
+# Define o fundo
+feh --bg-fill "$img"
+
+# Gera paleta com pywal e mescla no X server
+if [ "$SKIP_COLOR" -eq 0 ] && command -v wal >/dev/null; then
+    # -n: não tenta setar wallpaper (já fizemos com feh)
+    # -s: não envia escape sequences pra terminais abertos (evita flicker)
+    # -q: silencioso
+    wal -n -s -q -i "$img"
+    if [ -f "$HOME/.cache/wal/colors.Xresources" ]; then
+        xrdb -merge "$HOME/.cache/wal/colors.Xresources"
+    fi
+fi
+
+echo "Wallpaper: $(basename "$img")"
+[ "$SKIP_COLOR" -eq 0 ] && echo "Cores geradas em ~/.cache/wal/. No dwm, aperte Mod+F5 pra recarregar."
